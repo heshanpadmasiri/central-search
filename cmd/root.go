@@ -32,5 +32,6 @@ func NewRootCommand(searchService SearchService, documentationService catalog.Do
 	command.SetErr(streams.ErrOut)
 	command.AddCommand(newSearchCommand(searchService, streams.Out))
 	command.AddCommand(newManCommand(documentationService, streams.Out, streams.ErrOut))
+	command.AddCommand(newLLMCommand(streams.Out))
 	return command
 }

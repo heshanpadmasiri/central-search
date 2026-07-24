@@ -18,6 +18,14 @@ central-search search http --json
 
 Results retain Central's relevance order. The JSON search output is a stable array containing `organization`, `package`, `version`, and `summary`.
 
+## LLM instructions
+
+Print the bundled skill Markdown as plain text for use by language models:
+
+```sh
+central-search llm
+```
+
 ## Read package documentation
 
 Documentation is currently available as JSON:

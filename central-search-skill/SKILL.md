@@ -1,8 +1,3 @@
----
-name: central-search
-description: Search Ballerina Central packages and inspect structured package documentation, API declarations, and signatures. Use when answering questions about Ballerina modules, functions, types, clients, services, records, or other public APIs.
----
-
 # Central Search
 
 Use `central-search` to find Ballerina packages and inspect their documentation.

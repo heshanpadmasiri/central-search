@@ -13,7 +13,7 @@ func TestRootHelpListsCommands(t *testing.T) {
 	if err := root.ExecuteContext(t.Context()); err != nil {
 		t.Fatalf("ExecuteContext() error = %v", err)
 	}
-	for _, command := range []string{"search", "man"} {
+	for _, command := range []string{"search", "man", "llm"} {
 		if !strings.Contains(out.String(), command) {
 			t.Fatalf("help output does not contain %q: %q", command, out.String())
 		}
