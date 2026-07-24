@@ -5,3 +5,7 @@
 # Test and coverage artifacts
 *.test
 *.out
+
+.pi/todos/
+PLAN.md
+plan.md
