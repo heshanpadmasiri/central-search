@@ -1,0 +1,7 @@
+# Build outputs
+/central-search
+/bin/
+
+# Test and coverage artifacts
+*.test
+*.out
