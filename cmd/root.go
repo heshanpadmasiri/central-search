@@ -16,7 +16,7 @@ type IOStreams struct {
 }
 
 // NewRootCommand constructs the central-search root command.
-func NewRootCommand(service catalog.Service, streams IOStreams) *cobra.Command {
+func NewRootCommand(searchService SearchService, documentationService catalog.DocumentationService, streams IOStreams) *cobra.Command {
 	command := &cobra.Command{
 		Use:           "central-search",
 		Short:         "Search and read documentation from Ballerina Central",
@@ -30,7 +30,7 @@ func NewRootCommand(service catalog.Service, streams IOStreams) *cobra.Command {
 	command.SetIn(streams.In)
 	command.SetOut(streams.Out)
 	command.SetErr(streams.ErrOut)
-	command.AddCommand(newSearchCommand(service, streams.Out))
-	command.AddCommand(newManCommand(service, streams.Out))
+	command.AddCommand(newSearchCommand(searchService, streams.Out))
+	command.AddCommand(newManCommand(documentationService, streams.Out))
 	return command
 }

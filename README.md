@@ -2,7 +2,7 @@
 
 `central-search` is a CLI for finding packages and reading package documentation from [Ballerina Central](https://central.ballerina.io/).
 
-> The CLI interface is implemented, but the Ballerina Central backend is not configured yet. Valid `search` and `man` requests currently return a backend-not-configured error.
+> Package search uses the public Ballerina Central API. The package-documentation backend used by `man` is not configured yet.
 
 ## Build
 
@@ -18,15 +18,19 @@ go build ./...
 central-search search <query>
 ```
 
-Search is case-insensitive and matches the query as a substring of either the organization or package name. It does not search package summaries. Results are sorted by organization and package.
+Results retain the relevance order returned by Ballerina Central. Central returns 15 results by default; use `--limit` to request a different maximum:
 
-The default output is one package per line followed by its summary:
-
-```text
-ballerina/http  HTTP client and server APIs
+```sh
+central-search search http --limit 25
 ```
 
-Use `--json` for structured output:
+The default output contains one package per line with its version and summary:
+
+```text
+ballerina/http  2.16.4  This module provides APIs for HTTP and HTTP2 endpoints.
+```
+
+Use `--json` for a stable, compact JSON representation owned by this CLI:
 
 ```sh
 central-search search http --json
@@ -37,12 +41,13 @@ central-search search http --json
   {
     "organization": "ballerina",
     "package": "http",
-    "summary": "HTTP client and server APIs"
+    "version": "2.16.4",
+    "summary": "This module provides APIs for HTTP and HTTP2 endpoints."
   }
 ]
 ```
 
-A search without matches prints an error and exits with a non-zero status. With `--json`, it also writes `[]` to stdout.
+The version is the single version returned by Central's search endpoint, normally the latest package version. A search without matches prints an error and exits with a non-zero status. With `--json`, it also writes `[]` to stdout.
 
 ### Read package documentation
 
@@ -51,7 +56,7 @@ central-search man <package>
 central-search man <organization/package>
 ```
 
-An unqualified package name must uniquely identify a package. Documentation always targets the latest package version. Documentation parsing and terminal rendering will be added when the Central API is integrated; the command currently treats service content as opaque bytes.
+An unqualified package name must uniquely identify a package. Documentation always targets the latest package version. Documentation parsing, rendering, and the Central documentation backend have not yet been implemented.
 
 ## Test
 

@@ -41,11 +41,8 @@ func TestParsePackageSelectorRejectsInvalidValues(t *testing.T) {
 	}
 }
 
-func TestUnavailableService(t *testing.T) {
-	service := NewUnavailableService()
-	if _, err := service.Search(t.Context(), "http"); !errors.Is(err, ErrBackendUnavailable) {
-		t.Fatalf("Search() error = %v, want ErrBackendUnavailable", err)
-	}
+func TestUnavailableDocumentationService(t *testing.T) {
+	service := NewUnavailableDocumentationService()
 	if _, err := service.Documentation(t.Context(), PackageSelector{Package: "http"}); !errors.Is(err, ErrBackendUnavailable) {
 		t.Fatalf("Documentation() error = %v, want ErrBackendUnavailable", err)
 	}

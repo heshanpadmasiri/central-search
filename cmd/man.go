@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newManCommand(service catalog.Service, out io.Writer) *cobra.Command {
+func newManCommand(service catalog.DocumentationService, out io.Writer) *cobra.Command {
 	return &cobra.Command{
 		Use:   "man <package|organization/package>",
 		Short: "Show documentation for the latest package version",

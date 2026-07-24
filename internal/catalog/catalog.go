@@ -41,13 +41,6 @@ func (s PackageSelector) String() string {
 	return s.Organization + "/" + s.Package
 }
 
-// PackageSummary is a package returned by a search.
-type PackageSummary struct {
-	Organization string
-	Package      string
-	Summary      string
-}
-
 // PackageDocumentation contains the opaque documentation response for the
 // latest version of a resolved package. Parsing and rendering are deliberately
 // deferred until the Central API response format is integrated.
@@ -59,10 +52,8 @@ type PackageDocumentation struct {
 	Content      []byte
 }
 
-// Service provides access to Ballerina Central. Search implementations must
-// match query case-insensitively as a substring of either the organization or
-// package name, but not the summary.
-type Service interface {
-	Search(ctx context.Context, query string) ([]PackageSummary, error)
+// DocumentationService provides access to package documentation in Ballerina
+// Central.
+type DocumentationService interface {
 	Documentation(ctx context.Context, selector PackageSelector) (PackageDocumentation, error)
 }

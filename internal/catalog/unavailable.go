@@ -5,24 +5,21 @@ import (
 	"errors"
 )
 
-// ErrBackendUnavailable indicates that no Ballerina Central backend is wired.
-var ErrBackendUnavailable = errors.New("Ballerina Central backend is not configured")
+// ErrBackendUnavailable indicates that no Ballerina Central documentation
+// backend is wired.
+var ErrBackendUnavailable = errors.New("Ballerina Central documentation backend is not configured")
 
-// UnavailableService is used until the Central backend is implemented.
-type UnavailableService struct{}
+// UnavailableDocumentationService is used until the documentation backend is
+// implemented.
+type UnavailableDocumentationService struct{}
 
-// NewUnavailableService returns a catalog service that reports that the
-// backend has not been configured.
-func NewUnavailableService() Service {
-	return UnavailableService{}
-}
-
-// Search reports that the backend has not been configured.
-func (UnavailableService) Search(context.Context, string) ([]PackageSummary, error) {
-	return nil, ErrBackendUnavailable
+// NewUnavailableDocumentationService returns a documentation service that
+// reports that its backend has not been configured.
+func NewUnavailableDocumentationService() DocumentationService {
+	return UnavailableDocumentationService{}
 }
 
 // Documentation reports that the backend has not been configured.
-func (UnavailableService) Documentation(context.Context, PackageSelector) (PackageDocumentation, error) {
+func (UnavailableDocumentationService) Documentation(context.Context, PackageSelector) (PackageDocumentation, error) {
 	return PackageDocumentation{}, ErrBackendUnavailable
 }
