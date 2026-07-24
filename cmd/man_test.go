@@ -3,64 +3,51 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
 	"github.com/heshanpadmasiri/central-search/internal/catalog"
 )
 
-func TestManWritesOpaqueDocumentation(t *testing.T) {
-	var gotSelector catalog.PackageSelector
-	service := fakeDocumentationService{documentationFunc: func(_ context.Context, selector catalog.PackageSelector) (catalog.PackageDocumentation, error) {
-		gotSelector = selector
-		return catalog.PackageDocumentation{Content: []byte("# HTTP\n\nPackage documentation.\n")}, nil
+func TestManWritesJSONAndWarnings(t *testing.T) {
+	var gotQuery string
+	service := fakeDocumentationService{documentationFunc: func(_ context.Context, query string) (catalog.Package, error) {
+		gotQuery = query
+		return catalog.Package{SchemaVersion: 1, Complete: false, Warnings: []catalog.Warning{{Module: "http.extra", Message: "unavailable"}}, Modules: []catalog.Module{}}, nil
 	}}
-	var out bytes.Buffer
-	root := NewRootCommand(fakeSearchService{}, service, IOStreams{Out: &out, ErrOut: &bytes.Buffer{}})
-	root.SetArgs([]string{"man", "ballerina/http"})
-
+	var out, errOut bytes.Buffer
+	root := NewRootCommand(fakeSearchService{}, service, IOStreams{Out: &out, ErrOut: &errOut})
+	root.SetArgs([]string{"man", "  http client  ", "--json"})
 	if err := root.ExecuteContext(t.Context()); err != nil {
-		t.Fatalf("ExecuteContext() error = %v", err)
+		t.Fatal(err)
 	}
-	wantSelector := catalog.PackageSelector{Organization: "ballerina", Package: "http"}
-	if gotSelector != wantSelector {
-		t.Fatalf("Documentation selector = %#v, want %#v", gotSelector, wantSelector)
+	if gotQuery != "http client" {
+		t.Fatalf("query=%q", gotQuery)
 	}
-	if got := out.String(); got != "# HTTP\n\nPackage documentation.\n" {
-		t.Fatalf("output = %q", got)
+	var result catalog.Package
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+		t.Fatalf("invalid JSON %q: %v", out.String(), err)
+	}
+	if errOut.String() != "Warning: http.extra: unavailable\n" {
+		t.Fatalf("stderr=%q", errOut.String())
 	}
 }
 
-func TestManAcceptsUnqualifiedPackage(t *testing.T) {
-	service := fakeDocumentationService{documentationFunc: func(_ context.Context, selector catalog.PackageSelector) (catalog.PackageDocumentation, error) {
-		if selector.Organization != "" || selector.Package != "http" {
-			t.Fatalf("selector = %#v", selector)
-		}
-		return catalog.PackageDocumentation{}, nil
-	}}
-	root := NewRootCommand(fakeSearchService{}, service, IOStreams{Out: &bytes.Buffer{}, ErrOut: &bytes.Buffer{}})
-	root.SetArgs([]string{"man", "http"})
-	if err := root.ExecuteContext(t.Context()); err != nil {
-		t.Fatalf("ExecuteContext() error = %v", err)
-	}
-}
-
-func TestManRejectsInvalidPackage(t *testing.T) {
+func TestManWithoutJSONDoesNotCallService(t *testing.T) {
 	root := NewRootCommand(fakeSearchService{}, fakeDocumentationService{}, IOStreams{Out: &bytes.Buffer{}, ErrOut: &bytes.Buffer{}})
-	root.SetArgs([]string{"man", "ballerina/http/client"})
-	if err := root.ExecuteContext(t.Context()); err == nil {
-		t.Fatal("ExecuteContext() succeeded, want invalid-package error")
+	root.SetArgs([]string{"man", "http"})
+	if err := root.ExecuteContext(t.Context()); !errors.Is(err, ErrManTextRenderingUnavailable) {
+		t.Fatalf("error=%v", err)
 	}
 }
 
 func TestManWrapsBackendError(t *testing.T) {
 	backendErr := errors.New("network failed")
-	service := fakeDocumentationService{documentationFunc: func(context.Context, catalog.PackageSelector) (catalog.PackageDocumentation, error) {
-		return catalog.PackageDocumentation{}, backendErr
-	}}
+	service := fakeDocumentationService{documentationFunc: func(context.Context, string) (catalog.Package, error) { return catalog.Package{}, backendErr }}
 	root := NewRootCommand(fakeSearchService{}, service, IOStreams{Out: &bytes.Buffer{}, ErrOut: &bytes.Buffer{}})
-	root.SetArgs([]string{"man", "http"})
+	root.SetArgs([]string{"man", "http", "--json"})
 	if err := root.ExecuteContext(t.Context()); !errors.Is(err, backendErr) {
-		t.Fatalf("ExecuteContext() error = %v, want wrapped backend error", err)
+		t.Fatalf("error=%v", err)
 	}
 }

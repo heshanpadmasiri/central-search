@@ -23,6 +23,8 @@ type SearchPackagesOptions struct {
 	// Limit is omitted from the request when nil, allowing Central to apply its
 	// default.
 	Limit *int
+	// Offset is omitted from the request when nil.
+	Offset *int
 }
 
 // Client calls the Ballerina Central API.
@@ -60,6 +62,9 @@ func (c *Client) SearchPackages(ctx context.Context, query string, options Searc
 	if options.Limit != nil {
 		parameters.Set("limit", fmt.Sprintf("%d", *options.Limit))
 	}
+	if options.Offset != nil {
+		parameters.Set("offset", fmt.Sprintf("%d", *options.Offset))
+	}
 	endpoint.RawQuery = parameters.Encode()
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
@@ -91,4 +96,42 @@ func (c *Client) SearchPackages(ctx context.Context, query string, options Searc
 		return SearchPackagesResponse{}, fmt.Errorf("decode package search response: %w", err)
 	}
 	return result, nil
+}
+
+// PackageVersions returns package versions in the order supplied by Central.
+func (c *Client) PackageVersions(ctx context.Context, organization, packageName string) ([]string, error) {
+	endpoint := *c.baseURL
+	endpoint.Path += "packages/" + url.PathEscape(organization) + "/" + url.PathEscape(packageName)
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("create package versions request: %w", err)
+	}
+	request.Header.Set("Accept", "application/json")
+	response, err := c.httpClient.Do(request)
+	if err != nil {
+		return nil, fmt.Errorf("send package versions request: %w", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		body, readErr := io.ReadAll(io.LimitReader(response.Body, maxErrorBody))
+		if readErr != nil {
+			return nil, fmt.Errorf("Central package versions returned %s (read error response: %v)", response.Status, readErr)
+		}
+		message := strings.TrimSpace(string(body))
+		if message == "" {
+			return nil, fmt.Errorf("Central package versions returned %s", response.Status)
+		}
+		return nil, fmt.Errorf("Central package versions returned %s: %s", response.Status, message)
+	}
+
+	var versions []string
+	if err := json.NewDecoder(response.Body).Decode(&versions); err != nil {
+		return nil, fmt.Errorf("decode package versions response: %w", err)
+	}
+	if versions == nil {
+		versions = []string{}
+	}
+	return versions, nil
 }

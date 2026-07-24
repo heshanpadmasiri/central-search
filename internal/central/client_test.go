@@ -23,6 +23,9 @@ func TestSearchPackages(t *testing.T) {
 		if got := request.URL.Query().Get("limit"); got != "2" {
 			t.Errorf("limit = %q, want 2", got)
 		}
+		if got := request.URL.Query().Get("offset"); got != "3" {
+			t.Errorf("offset = %q, want 3", got)
+		}
 		if got := request.Header.Get("Accept"); got != "application/json" {
 			t.Errorf("Accept = %q", got)
 		}
@@ -35,8 +38,8 @@ func TestSearchPackages(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)
 	}
-	limit := 2
-	result, err := client.SearchPackages(t.Context(), "http client", SearchPackagesOptions{Limit: &limit})
+	limit, offset := 2, 3
+	result, err := client.SearchPackages(t.Context(), "http client", SearchPackagesOptions{Limit: &limit, Offset: &offset})
 	if err != nil {
 		t.Fatalf("SearchPackages() error = %v", err)
 	}
@@ -53,6 +56,9 @@ func TestSearchPackagesOmitsLimit(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		if _, exists := request.URL.Query()["limit"]; exists {
 			t.Errorf("query unexpectedly contains limit: %q", request.URL.RawQuery)
+		}
+		if _, exists := request.URL.Query()["offset"]; exists {
+			t.Errorf("query unexpectedly contains offset: %q", request.URL.RawQuery)
 		}
 		_, _ = response.Write([]byte(`{"packages":[],"count":0,"offset":0,"limit":15}`))
 	}))
@@ -104,6 +110,45 @@ func TestSearchPackagesHonorsContextCancellation(t *testing.T) {
 	_, err = client.SearchPackages(ctx, "http", SearchPackagesOptions{})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("SearchPackages() error = %v, want context.Canceled", err)
+	}
+}
+
+func TestPackageVersionsPreservesOrder(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/registry/packages/ballerina/http" {
+			t.Errorf("path = %q", request.URL.Path)
+		}
+		if request.Header.Get("Accept") != "application/json" {
+			t.Errorf("Accept = %q", request.Header.Get("Accept"))
+		}
+		_, _ = response.Write([]byte(`["2.0.0","1.0.0"]`))
+	}))
+	defer server.Close()
+	client, _ := NewClient(server.URL+"/registry", server.Client())
+	versions, err := client.PackageVersions(t.Context(), "ballerina", "http")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(versions) != 2 || versions[0] != "2.0.0" || versions[1] != "1.0.0" {
+		t.Fatalf("versions = %#v", versions)
+	}
+}
+
+func TestPackageVersionsErrors(t *testing.T) {
+	for name, handler := range map[string]http.HandlerFunc{
+		"status": func(response http.ResponseWriter, _ *http.Request) {
+			http.Error(response, "failed", http.StatusBadGateway)
+		},
+		"json": func(response http.ResponseWriter, _ *http.Request) { _, _ = response.Write([]byte("not-json")) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			server := httptest.NewServer(handler)
+			defer server.Close()
+			client, _ := NewClient(server.URL, server.Client())
+			if _, err := client.PackageVersions(t.Context(), "a", "b"); err == nil {
+				t.Fatal("expected error")
+			}
+		})
 	}
 }
 

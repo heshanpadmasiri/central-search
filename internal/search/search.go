@@ -16,6 +16,8 @@ var (
 	ErrEmptyQuery = errors.New("search query must not be empty")
 	// ErrInvalidLimit indicates that a search limit is not positive.
 	ErrInvalidLimit = errors.New("search limit must be greater than zero")
+	// ErrInvalidOffset indicates that a search offset is negative.
+	ErrInvalidOffset = errors.New("search offset must not be negative")
 )
 
 // PackageClient is the Central operation needed to search packages.
@@ -37,11 +39,16 @@ func NewService(client PackageClient) *Service {
 type Options struct {
 	// Limit is nil when Central should use its default.
 	Limit *int
+	// Offset is nil when Central should use its default.
+	Offset *int
 }
 
-// Response contains packages returned by a search.
+// Response contains packages and Central pagination metadata.
 type Response struct {
 	Packages []Package
+	Count    int
+	Offset   int
+	Limit    int
 }
 
 // Package is a package shown in search output.
@@ -61,8 +68,11 @@ func (s *Service) Search(ctx context.Context, query string, options Options) (Re
 	if options.Limit != nil && *options.Limit <= 0 {
 		return Response{}, ErrInvalidLimit
 	}
+	if options.Offset != nil && *options.Offset < 0 {
+		return Response{}, ErrInvalidOffset
+	}
 
-	result, err := s.client.SearchPackages(ctx, query, central.SearchPackagesOptions{Limit: options.Limit})
+	result, err := s.client.SearchPackages(ctx, query, central.SearchPackagesOptions{Limit: options.Limit, Offset: options.Offset})
 	if err != nil {
 		return Response{}, fmt.Errorf("search Central packages: %w", err)
 	}
@@ -76,5 +86,10 @@ func (s *Service) Search(ctx context.Context, query string, options Options) (Re
 			Summary:      item.Summary,
 		}
 	}
-	return Response{Packages: packages}, nil
+	return Response{
+		Packages: packages,
+		Count:    result.Count,
+		Offset:   result.Offset,
+		Limit:    result.Limit,
+	}, nil
 }

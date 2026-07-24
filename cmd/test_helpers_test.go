@@ -19,12 +19,12 @@ func (f fakeSearchService) Search(ctx context.Context, query string, options sea
 }
 
 type fakeDocumentationService struct {
-	documentationFunc func(context.Context, catalog.PackageSelector) (catalog.PackageDocumentation, error)
+	documentationFunc func(context.Context, string) (catalog.Package, error)
 }
 
-func (f fakeDocumentationService) Documentation(ctx context.Context, selector catalog.PackageSelector) (catalog.PackageDocumentation, error) {
+func (f fakeDocumentationService) Documentation(ctx context.Context, query string) (catalog.Package, error) {
 	if f.documentationFunc == nil {
 		panic("unexpected Documentation call")
 	}
-	return f.documentationFunc(ctx, selector)
+	return f.documentationFunc(ctx, query)
 }

@@ -18,22 +18,26 @@ func (f fakePackageClient) SearchPackages(ctx context.Context, query string, opt
 
 func TestSearchMapsResponseAndPreservesOrder(t *testing.T) {
 	var gotQuery string
-	var gotLimit *int
+	var gotLimit, gotOffset *int
 	client := fakePackageClient{searchFunc: func(_ context.Context, query string, options central.SearchPackagesOptions) (central.SearchPackagesResponse, error) {
 		gotQuery = query
 		gotLimit = options.Limit
+		gotOffset = options.Offset
 		return central.SearchPackagesResponse{Packages: []central.Package{
 			{Organization: "wso2", Name: "second", Version: "2.0.0", Summary: "Second"},
 			{Organization: "ballerina", Name: "first", Version: "1.0.0", Summary: "First"},
-		}}, nil
+		}, Count: 12, Offset: 3, Limit: 5}, nil
 	}}
-	limit := 5
-	response, err := NewService(client).Search(t.Context(), "  http  ", Options{Limit: &limit})
+	limit, offset := 5, 3
+	response, err := NewService(client).Search(t.Context(), "  http  ", Options{Limit: &limit, Offset: &offset})
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
 	}
-	if gotQuery != "http" || gotLimit == nil || *gotLimit != 5 {
-		t.Fatalf("client arguments = query %q, limit %v", gotQuery, gotLimit)
+	if gotQuery != "http" || gotLimit == nil || *gotLimit != 5 || gotOffset == nil || *gotOffset != 3 {
+		t.Fatalf("client arguments = query %q, limit %v, offset %v", gotQuery, gotLimit, gotOffset)
+	}
+	if response.Count != 12 || response.Offset != 3 || response.Limit != 5 {
+		t.Fatalf("pagination = count %d, offset %d, limit %d", response.Count, response.Offset, response.Limit)
 	}
 	want := []Package{
 		{Organization: "wso2", Package: "second", Version: "2.0.0", Summary: "Second"},
@@ -59,6 +63,10 @@ func TestSearchRejectsInvalidInput(t *testing.T) {
 	}
 	if _, err := service.Search(t.Context(), "http", Options{Limit: &zero}); !errors.Is(err, ErrInvalidLimit) {
 		t.Fatalf("zero-limit Search() error = %v, want ErrInvalidLimit", err)
+	}
+	negative := -1
+	if _, err := service.Search(t.Context(), "http", Options{Offset: &negative}); !errors.Is(err, ErrInvalidOffset) {
+		t.Fatalf("negative-offset Search() error = %v, want ErrInvalidOffset", err)
 	}
 }
 
