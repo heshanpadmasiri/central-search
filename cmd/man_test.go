@@ -34,11 +34,29 @@ func TestManWritesJSONAndWarnings(t *testing.T) {
 	}
 }
 
-func TestManWithoutJSONDoesNotCallService(t *testing.T) {
-	root := NewRootCommand(fakeSearchService{}, fakeDocumentationService{}, IOStreams{Out: &bytes.Buffer{}, ErrOut: &bytes.Buffer{}})
+func TestManWritesMarkdownWithoutJSON(t *testing.T) {
+	service := fakeDocumentationService{documentationFunc: func(_ context.Context, query string) (catalog.Package, error) {
+		if query != "http" {
+			t.Fatalf("query=%q", query)
+		}
+		return catalog.Package{
+			Organization: "ballerina", Name: "http", Version: "2.16.4", Complete: true,
+			Modules: []catalog.Module{{Name: "http", IsDefault: true, Functions: []catalog.Function{{Symbol: catalog.Symbol{Name: "parseHeader", Signature: "function parseHeader(string value)"}}}}},
+		}, nil
+	}}
+	var out bytes.Buffer
+	root := NewRootCommand(fakeSearchService{}, service, IOStreams{Out: &out, ErrOut: &bytes.Buffer{}})
 	root.SetArgs([]string{"man", "http"})
-	if err := root.ExecuteContext(t.Context()); !errors.Is(err, ErrManTextRenderingUnavailable) {
-		t.Fatalf("error=%v", err)
+	if err := root.ExecuteContext(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{"# ballerina/http", "**Version:** 2.16.4", "## Module: http", "### Functions", "#### `parseHeader`", "```ballerina"} {
+		if !bytes.Contains(out.Bytes(), []byte(expected)) {
+			t.Fatalf("output does not contain %q:\n%s", expected, out.String())
+		}
+	}
+	if bytes.Contains(out.Bytes(), []byte("\x1b[")) {
+		t.Fatalf("piped output contains ANSI escapes: %q", out.String())
 	}
 }
 
