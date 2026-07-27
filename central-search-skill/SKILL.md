@@ -45,12 +45,14 @@ central-search man '<query>' --json |
   jq -r '.modules[] | select(.name == "<module>") | .functions[] | "\(.name): \(.signature)"'
 ```
 
-Find a function:
+List all functions with their arguments and documentation:
 
 ```sh
 central-search man '<query>' --json |
-  jq '.modules[].functions[] | select(.name == "<function>")'
+  jq '.modules[] as $module | $module.functions[] | {module: $module.name, name, signature, documentation, arguments: [.arguments[] | {name, type, signature, documentation, optional, rest, defaultValue}]}'
 ```
+
+Each result includes the module name, complete function signature and documentation. Its `arguments` array includes each argument's declaration, type, documentation, optional and rest markers, and default value when present.
 
 List records and their signatures:
 
@@ -66,12 +68,14 @@ central-search man '<query>' --json |
   jq '.modules[].records[] | select(.name == "<record>") | .fields'
 ```
 
-Inspect client methods:
+List all clients and their method definitions:
 
 ```sh
 central-search man '<query>' --json |
-  jq '.modules[].clients[] | select(.name == "<client>") | (.methods + .remoteMethods + .resourceMethods)[] | {name, signature}'
+  jq '.modules[] as $module | $module.clients[] | {module: $module.name, name, signature, methods: [(.methods + .remoteMethods + .resourceMethods)[] | {name, signature}]}'
 ```
+
+Each result retains the module name and client signature, and groups the client's regular, remote, and resource methods under `methods`. Use the method `signature` for the complete declaration.
 
 Find any symbol recursively:
 
